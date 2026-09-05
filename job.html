@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Details - Sarkari Result</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; color: #222; }
+  header { background: #0b3d91; color: #fff; padding: 20px; text-align: center; }
+  .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+  .detail-box {
+    background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .detail-box h1 { color: #0b3d91; margin-bottom: 15px; font-size: 22px; }
+  .row { display: flex; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .row .label { width: 160px; font-weight: bold; color: #555; }
+  .row .value { flex: 1; }
+  .apply-btn {
+    display: inline-block; margin-top: 20px; background: #0b3d91; color: #fff;
+    padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;
+  }
+  .back-link { display: inline-block; margin-bottom: 15px; color: #0b3d91; text-decoration: none; }
+  .loading { text-align: center; padding: 40px; color: #777; }
+</style>
+</head>
+<body>
+
+<header><h1>📄 Job Details</h1></header>
+
+<div class="container">
+  <a href="index.html" class="back-link">← वापस सभी जॉब्स पर जाएं</a>
+  <div id="jobDetail" class="detail-box">
+    <div class="loading">लोड हो रहा है...</div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ YAHAN WAHI APPS SCRIPT WEB APP URL DAALEIN (index.html jaisa)
+  const API_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+  function getSlugFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('slug');
+  }
+
+  async function loadJobDetail() {
+    const slug = getSlugFromURL();
+    const box = document.getElementById('jobDetail');
+
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      const job = data.find(j => (j.Slug || j.Title) === slug);
+
+      if (!job) {
+        box.innerHTML = '<p>यह पोस्ट नहीं मिली।</p>';
+        return;
+      }
+
+      box.innerHTML = `
+        <h1>${job.Title}</h1>
+        <div class="row"><div class="label">तारीख:</div><div class="value">${job.Date || '-'}</div></div>
+        <div class="row"><div class="label">योग्यता:</div><div class="value">${job.Eligibility || '-'}</div></div>
+        <div class="row"><div class="label">विवरण:</div><div class="value">${job.Description || '-'}</div></div>
+        ${job.ApplyLink ? `<a class="apply-btn" href="${job.ApplyLink}" target="_blank">Apply / अधिक जानकारी</a>` : ''}
+      `;
+    } catch (err) {
+      box.innerHTML = '<p>Error आई डेटा लोड करने में।</p>';
+      console.error(err);
+    }
+  }
+
+  loadJobDetail();
+</script>
+
+</body>
+</html>

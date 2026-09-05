@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sarkari Result - Latest Jobs & Results</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; color: #222; }
+  header { background: #0b3d91; color: #fff; padding: 20px; text-align: center; }
+  header h1 { font-size: 24px; }
+  .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
+  .job-card {
+    background: #fff; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); border-left: 5px solid #0b3d91;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .job-card:hover { transform: translateY(-2px); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+  .job-card h2 { font-size: 18px; color: #0b3d91; margin-bottom: 6px; }
+  .job-card p { font-size: 14px; color: #555; margin: 2px 0; }
+  .job-card .date { color: #c0392b; font-weight: bold; }
+  .loading { text-align: center; padding: 40px; color: #777; }
+  footer { text-align: center; padding: 20px; color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📢 Sarkari Result - Latest Notifications</h1>
+</header>
+
+<div class="container" id="jobList">
+  <div class="loading">लोड हो रहा है...</div>
+</div>
+
+<footer>Yeh website automatically update hoti hai.</footer>
+
+<script>
+  // ⚠️ YAHAN APNA APPS SCRIPT WEB APP URL DAALEIN
+  const API_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+  async function loadJobs() {
+    const container = document.getElementById('jobList');
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="loading">अभी कोई नई vacancy नहीं है।</div>';
+        return;
+      }
+
+      // Sort by newest first (assuming Date column, fallback to reverse order)
+      const jobs = data.reverse();
+
+      container.innerHTML = jobs.map(job => `
+        <div class="job-card" onclick="window.location.href='job.html?slug=${encodeURIComponent(job.Slug || job.Title)}'">
+          <h2>${job.Title || 'Untitled Post'}</h2>
+          <p class="date">📅 ${job.Date || 'Date not available'}</p>
+          <p>🎓 ${job.Eligibility || ''}</p>
+        </div>
+      `).join('');
+
+    } catch (err) {
+      container.innerHTML = '<div class="loading">Data load karne mein error aayi. API URL check karein.</div>';
+      console.error(err);
+    }
+  }
+
+  loadJobs();
+</script>
+
+</body>
+</html>

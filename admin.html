@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - New Post</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; color: #222; }
+  header { background: #0b3d91; color: #fff; padding: 20px; text-align: center; }
+  .container { max-width: 700px; margin: 30px auto; padding: 0 15px; }
+  .box { background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  textarea {
+    width: 100%; height: 200px; padding: 12px; font-size: 14px; border: 1px solid #ccc;
+    border-radius: 6px; resize: vertical; font-family: inherit;
+  }
+  button {
+    margin-top: 15px; background: #0b3d91; color: #fff; border: none; padding: 12px 24px;
+    border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: bold;
+  }
+  button:disabled { background: #999; cursor: not-allowed; }
+  #status { margin-top: 15px; font-size: 14px; }
+  #preview {
+    margin-top: 20px; background: #f0f4ff; padding: 15px; border-radius: 6px;
+    font-size: 13px; white-space: pre-wrap; display: none;
+  }
+  .lock-screen {
+    max-width: 350px; margin: 100px auto; background: #fff; padding: 30px;
+    border-radius: 8px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .lock-screen input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<div id="lockScreen" class="lock-screen">
+  <h2>🔒 Admin Login</h2>
+  <input type="password" id="pwd" placeholder="Password daalein">
+  <button onclick="checkPassword()">Enter</button>
+</div>
+
+<div id="mainContent" style="display:none;">
+  <header><h1>➕ Naya Post Add Karein</h1></header>
+  <div class="container">
+    <div class="box">
+      <p style="margin-bottom:10px; color:#555;">Neeche raw notification text paste karein (jaisa hai waisa, kisi bhi format mein):</p>
+      <textarea id="rawText" placeholder="Example: UPSC ne CDS 2 ki vacancy nikali hai. Last date 20 September 2026 hai. Graduate candidates apply kar sakte hain. Official link: upsc.gov.in"></textarea>
+      <br>
+      <button id="submitBtn" onclick="processAndSave()">AI se Format Karo aur Save Karo</button>
+      <div id="status"></div>
+      <div id="preview"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ YAHAN APNI DETAILS DAALEIN
+  const ADMIN_PASSWORD = "changeme123";           // apna password yahan set karein
+  const GEMINI_API_KEY = "AQ.Ab8RN6JNu1Ii5Ig6dh659rcVddNSaZ25CZ9jQ94TRbrm4OZJ1w";
+  const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+  function checkPassword() {
+    const entered = document.getElementById('pwd').value;
+    if (entered === ADMIN_PASSWORD) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+    } else {
+      alert('Galat password!');
+    }
+  }
+
+  function slugify(text) {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60);
+  }
+
+  async function processAndSave() {
+    const rawText = document.getElementById('rawText').value.trim();
+    const status = document.getElementById('status');
+    const preview = document.getElementById('preview');
+    const btn = document.getElementById('submitBtn');
+
+    if (!rawText) {
+      status.innerHTML = '❌ Pehle text paste karein.';
+      return;
+    }
+
+    btn.disabled = true;
+    status.innerHTML = '⏳ AI text ko format kar raha hai...';
+    preview.style.display = 'none';
+
+    const prompt = `Neeche diye gaye job/result notification se details nikalo aur SIRF ek valid JSON object do, koi extra text ya markdown backticks nahi. JSON ka format bilkul ye ho:
+{"Title": "...", "Date": "...", "Eligibility": "...", "ApplyLink": "...", "Description": "..."}
+
+Agar koi field text mein nahi mile to usme "Not specified" likho. Description mein 2-3 line ka summary do.
+
+Notification text:
+"""${rawText}"""`;
+
+    try {
+      // Step 1: Gemini API ko call karo
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        }
+      );
+      const geminiData = await geminiRes.json();
+      let rawOutput = geminiData.candidates[0].content.parts[0].text;
+
+      // Clean karo agar AI ne ```json``` fences laga diye ho
+      rawOutput = rawOutput.replace(/```json|```/g, '').trim();
+      const jobData = JSON.parse(rawOutput);
+      jobData.Slug = slugify(jobData.Title || 'post-' + Date.now());
+
+      preview.style.display = 'block';
+      preview.textContent = JSON.stringify(jobData, null, 2);
+      status.innerHTML = '⏳ Google Sheet mein save kar raha hai...';
+
+      // Step 2: Apps Script ko POST karo taaki Sheet mein save ho
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(jobData)
+      });
+
+      status.innerHTML = '✅ Post successfully add ho gayi! Website par check karein.';
+      document.getElementById('rawText').value = '';
+
+    } catch (err) {
+      status.innerHTML = '❌ Error aayi: ' + err.message + ' (console check karein)';
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>
